@@ -1,0 +1,9 @@
+# models/bronze/sources.yml
+version: 2
+
+sources:
+  - name: bronze
+    database: "{{ 'DEV' if target.name == 'dev' else 'PROD' }}_BRONZE"
+    schema: GED
+    tables:
+      - name: raw_clients
