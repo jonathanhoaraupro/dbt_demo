@@ -25,7 +25,7 @@ jobs:
 
       - name: Write RSA Key File
         run: |
-          echo "${{ secrets.SNOWFLAKE_PRIVATE_KEY }}" > dbt_key.p8
+          echo "${{ secrets.SNOWFLAKE_PRIVATE_KEY }}" > dbt_demo_project/dbt_key.p8
 
       - name: Create profiles.yml for CD
         run: |
