@@ -31,12 +31,13 @@ clean-targets:         # directories to be removed by `dbt clean`
 # files using the `{{ config(...) }}` macro.
 models:
   dbt_demo_project:
-    bronze:
-      +database: "{{ 'DEV' if target.name == 'dev' else 'PROD' }}_BRONZE"
-      +materialized: view
     silver:
       +database: "{{ 'DEV' if target.name == 'dev' else 'PROD' }}_SILVER"
       +materialized: incremental
+      GED:
+        +schema: GED
     gold:
       +database: "{{ 'DEV' if target.name == 'dev' else 'PROD' }}_GOLD"
       +materialized: table
+      dim:
+        +schema: REF
