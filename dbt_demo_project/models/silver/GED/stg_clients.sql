@@ -1,3 +1,3 @@
 SELECT 
         *
-    FROM {{ source('bronze', 'raw_clients') }}
+    FROM {{ source('bronzee', 'raw_clients') }}
