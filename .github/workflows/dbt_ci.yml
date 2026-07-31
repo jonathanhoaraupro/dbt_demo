@@ -3,53 +3,54 @@ name: dbt CI Pipeline
 on:
   push:
     branches:
-      - dev
-
+      - main
+ 
 jobs:
-  dbt_ci:
+  dbt_cd:
     runs-on: ubuntu-latest
-
+ 
     steps:
       - name: Checkout repo code
         uses: actions/checkout@v4
-
+ 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-
+ 
       - name: Install Snowflake CLI
         run: |
           python -m pip install --upgrade pip
           pip install snowflake-cli-labs
-
+ 
       - name: Write RSA key file
         run: |
           echo "${{ secrets.SNOWFLAKE_PRIVATE_KEY }}" > dbt_key.p8
-
+ 
       - name: Configure Snowflake CLI connection
         run: |
           mkdir -p ~/.snowflake
           cat > ~/.snowflake/config.toml << EOF
-          [connections.dev]
+          [connections.prod]
           account = "${{ secrets.SNOWFLAKE_ACCOUNT }}"
-          user = "SVC_DBT"
-          role = "SVC_DBT_DEV_ROLE"
-          warehouse = "DEV_TRANSFORM_WH"
+          user = "SVC_DBT_PROD"
+          role = "SVC_DBT_PROD_ROLE"
+          warehouse = "PROD_TRANSFORM_WH"
           authenticator = "SNOWFLAKE_JWT"
           private_key_path = "${{ github.workspace }}/dbt_key.p8"
           EOF
-
-      - name: Recreate dbt project (branche dev) and run
+          chmod 0600 ~/.snowflake/config.toml
+ 
+      - name: Recreate dbt project (main) and run
         run: |
-          snow sql --connection dev -q "
-            ALTER GIT REPOSITORY DEV_ADMIN.DBT_PROJECT.DBT_REPO FETCH;
-
-            CREATE OR REPLACE DBT PROJECT DEV_ADMIN.DBT_PROJECT.DBT_DEMO_DEV
-              FROM '@DEV_ADMIN.DBT_PROJECT.DBT_REPO/branches/dev/dbt_demo_project'
-              DEFAULT_TARGET = 'dev'
-              COMMENT = 'dbt demo project - CI - commit ${{ github.sha }}';
-
-            EXECUTE DBT PROJECT DEV_ADMIN.DBT_PROJECT.DBT_DEMO_DEV
-              ARGS = 'build --target dev';
+          snow sql --connection prod -q "
+            ALTER GIT REPOSITORY PROD_ADMIN.DBT_PROJECT.DBT_REPO FETCH;
+ 
+            CREATE OR REPLACE DBT PROJECT PROD_ADMIN.DBT_PROJECT.DBT_DEMO_PROD
+              FROM '@PROD_ADMIN.DBT_PROJECT.DBT_REPO/branches/main/dbt_demo_project'
+              DEFAULT_TARGET = 'prod'
+              COMMENT = 'dbt demo project - CD - commit ${{ github.sha }}';
+ 
+            EXECUTE DBT PROJECT PROD_ADMIN.DBT_PROJECT.DBT_DEMO_PROD
+              ARGS = 'build --target prod';
           "
