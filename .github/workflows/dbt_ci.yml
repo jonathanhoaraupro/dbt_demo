@@ -1,7 +1,6 @@
 name: dbt CI Pipeline
 
-
-on:
+On:
   push:
     branches:
       - dev
@@ -39,6 +38,7 @@ jobs:
           warehouse = "DEV_TRANSFORM_WH"
           authenticator = "SNOWFLAKE_JWT"
           private_key_path = "${{ github.workspace }}/dbt_key.p8"
+          private_key_file_pwd = "${{ secrets.SNOWFLAKE_PRIVATE_KEY_PASSPHRASE }}"
           EOF
           chmod 0600 ~/.snowflake/config.toml
  
