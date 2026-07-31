@@ -1,0 +1,17 @@
+dbt_demo_project:
+  outputs:
+    dev:
+      type: snowflake
+      database: DEV_BRONZE
+      schema: GED
+      role: SVC_DBT_DEV_ROLE
+      warehouse: DEV_TRANSFORM_WH
+      threads: 2
+    prod:
+      type: snowflake
+      database: PROD_BRONZE
+      schema: GED
+      role: SVC_DBT_PROD_ROLE
+      warehouse: PROD_TRANSFORM_WH
+      threads: 2
+  target: dev
