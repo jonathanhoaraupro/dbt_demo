@@ -1,4 +1,4 @@
-name: dbt CI
+name: dbt CI Pipeline
 
 on:
   push:
