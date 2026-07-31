@@ -1,4 +1,4 @@
-name: dbt CD Pipeline
+name: dbt CD
 
 on:
   push:
@@ -18,36 +18,38 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Install dependencies
+      - name: Install Snowflake CLI
         run: |
           python -m pip install --upgrade pip
-          pip install dbt-snowflake
+          pip install snowflake-cli-labs
 
-      - name: Write RSA Key File
+      - name: Write RSA key file
         run: |
-          echo "${{ secrets.SNOWFLAKE_PRIVATE_KEY }}" > dbt_demo_project/dbt_key.p8
+          echo "${{ secrets.SNOWFLAKE_PRIVATE_KEY }}" > dbt_key.p8
 
-      - name: Create profiles.yml for CD
+      - name: Configure Snowflake CLI connection
         run: |
-          mkdir -p ~/.dbt
-          echo "dbt_demo_project:
-            target: prod
-            outputs:
-              prod:
-                type: snowflake
-                account: '${{ secrets.SNOWFLAKE_ACCOUNT }}'
-                user: 'SVC_DBT_PROD'
-                role: 'SVC_DBT_PROD_ROLE'
-                warehouse: 'PROD_TRANSFORM_WH'
-                database: 'PROD_BRONZE'
-                schema: 'GED'
-                threads: 2
-                private_key_passphrase: '${{ secrets.SNOWFLAKE_PRIVATE_KEY_PASSPHRASE }}'
-                private_key_path: 'dbt_key.p8'" > ~/.dbt/profiles.yml
+          mkdir -p ~/.snowflake
+          cat > ~/.snowflake/config.toml << EOF
+          [connections.prod]
+          account = "${{ secrets.SNOWFLAKE_ACCOUNT }}"
+          user = "SVC_DBT_PROD"
+          role = "SVC_DBT_PROD_ROLE"
+          warehouse = "PROD_TRANSFORM_WH"
+          authenticator = "SNOWFLAKE_JWT"
+          private_key_path = "${{ github.workspace }}/dbt_key.p8"
+          EOF
 
-      - name: Deploy & Run dbt models in PROD
+      - name: Recreate dbt project (main) and run
         run: |
-          cd dbt_demo_project
-          dbt deps
-          dbt debug --target prod
-          dbt build --target prod
+          snow sql --connection prod -q "
+            ALTER GIT REPOSITORY PROD_ADMIN.DBT_PROJECT.DBT_REPO FETCH;
+
+            CREATE OR REPLACE DBT PROJECT PROD_ADMIN.DBT_PROJECT.DBT_DEMO_PROD
+              FROM '@PROD_ADMIN.DBT_PROJECT.DBT_REPO/branches/main/dbt_demo_project'
+              DEFAULT_TARGET = 'prod'
+              COMMENT = 'dbt demo project - CD - commit ${{ github.sha }}';
+
+            EXECUTE DBT PROJECT PROD_ADMIN.DBT_PROJECT.DBT_DEMO_PROD
+              ARGS = 'build --target prod';
+          "

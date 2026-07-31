@@ -1,9 +1,9 @@
-name: dbt CI Pipeline
+name: dbt CI
 
 on:
-  pull_request:
+  push:
     branches:
-      - main
+      - dev
 
 jobs:
   dbt_ci:
@@ -18,36 +18,38 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Install dependencies
+      - name: Install Snowflake CLI
         run: |
           python -m pip install --upgrade pip
-          pip install dbt-snowflake
+          pip install snowflake-cli-labs
 
-      - name: Write RSA Key File
+      - name: Write RSA key file
         run: |
-          echo "${{ secrets.SNOWFLAKE_PRIVATE_KEY }}" > dbt_demo_project/dbt_key.p8
+          echo "${{ secrets.SNOWFLAKE_PRIVATE_KEY }}" > dbt_key.p8
 
-      - name: Create profiles.yml for CI
+      - name: Configure Snowflake CLI connection
         run: |
-          mkdir -p ~/.dbt
-          echo "dbt_demo_project:
-            target: dev
-            outputs:
-              dev:
-                type: snowflake
-                account: '${{ secrets.SNOWFLAKE_ACCOUNT }}'
-                user: 'SVC_DBT'
-                role: 'SVC_DBT_DEV_ROLE'
-                warehouse: 'DEV_TRANSFORM_WH'
-                database: 'DEV_BRONZE'
-                schema: 'GED'
-                threads: 2
-                private_key_passphrase: '${{ secrets.SNOWFLAKE_PRIVATE_KEY_PASSPHRASE }}'
-                private_key_path: 'dbt_key.p8'" > ~/.dbt/profiles.yml
+          mkdir -p ~/.snowflake
+          cat > ~/.snowflake/config.toml << EOF
+          [connections.dev]
+          account = "${{ secrets.SNOWFLAKE_ACCOUNT }}"
+          user = "SVC_DBT"
+          role = "SVC_DBT_DEV_ROLE"
+          warehouse = "DEV_TRANSFORM_WH"
+          authenticator = "SNOWFLAKE_JWT"
+          private_key_path = "${{ github.workspace }}/dbt_key.p8"
+          EOF
 
-      - name: Test dbt models in DEV
+      - name: Recreate dbt project (branche dev) and run
         run: |
-          cd dbt_demo_project
-          dbt deps
-          dbt debug --target dev
-          dbt build --target dev
+          snow sql --connection dev -q "
+            ALTER GIT REPOSITORY DEV_ADMIN.DBT_PROJECT.DBT_REPO FETCH;
+
+            CREATE OR REPLACE DBT PROJECT DEV_ADMIN.DBT_PROJECT.DBT_DEMO_DEV
+              FROM '@DEV_ADMIN.DBT_PROJECT.DBT_REPO/branches/dev/dbt_demo_project'
+              DEFAULT_TARGET = 'dev'
+              COMMENT = 'dbt demo project - CI - commit ${{ github.sha }}';
+
+            EXECUTE DBT PROJECT DEV_ADMIN.DBT_PROJECT.DBT_DEMO_DEV
+              ARGS = 'build --target dev';
+          "
