@@ -1,3 +1,3 @@
 SELECT 
         * 
-    FROM {{ ref('stg_clients') }}
+    FROM {{ ref('stg_clients_21') }}
