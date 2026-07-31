@@ -1,6 +1,6 @@
 name: dbt CI Pipeline
 
-On:
+on:
   push:
     branches:
       - dev
