@@ -1,0 +1,16 @@
+# Python virtual environment (uv)
+.venv/
+
+# dbt runtime artifacts and logs
+target/
+dbt_packages/
+logs/
+
+# Local dbt connection profile — contains Snowflake credentials, never commit
+profiles.yml
+
+# Local dbt user settings (per-developer, not shared)
+.user.yml
+
+# Env files
+.env
